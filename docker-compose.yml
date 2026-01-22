@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: windowshop-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/db:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=millionare-ecom-lifeplan
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+
+  mongo-init:
+    image: mongo:6.0
+    depends_on:
+      - mongo
+    entrypoint:
+      - sh
+      - -c
+      - |
+        # Wait for mongod to accept connections, then initiate replica set
+        echo "Waiting for mongo..."
+        for i in $(seq 1 30); do
+          mongosh --host mongo --eval "db.adminCommand('ping')" > /dev/null 2>&1 && break || sleep 1
+        done
+        echo "Initiating replica set..."
+        mongosh --host mongo --eval "rs.initiate({_id: 'rs0', members:[{_id: 0, host: 'mongo:27017'}]})" || true
+        echo "Waiting for PRIMARY election..."
+        for i in $(seq 1 30); do
+          mongosh --host mongo --eval "rs.status().members[0].stateStr" 2>/dev/null | grep -q PRIMARY && echo "PRIMARY elected!" && break || sleep 1
+        done
+    restart: "no"

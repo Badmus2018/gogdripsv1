@@ -1,0 +1,160 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+model Account {
+  id                 String  @id @default(uuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model User {
+  id                String  @id @default(uuid())
+  name              String?
+  email             String?  @unique
+  emailVerified     DateTime?
+  image             String?
+  hashedPassword    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  role Role         @default(USER)
+  fcmToken          String?
+
+  accounts          Account[]
+  orders            Order[]
+  reviews           Review[]
+  notifications     Notification[]
+  accessiblePages   String[] // List of page keys/routes this user (manager) can access
+}
+
+model Product {
+  id                String  @id @default(uuid())
+  name              String
+  description       String
+  price             Float
+  dmc               Float   @default(0)
+  discount          Float   @default(0)
+  // 'list' property removed
+  brand             String
+  category          String
+  inStock           Boolean
+  stock             Int     @default(0)
+  remainingStock    Int     @default(0)
+  isVisible         Boolean @default(true)
+  images            String[]
+  reviews           Review[]
+}
+
+model Review {
+  id                String  @id @default(uuid())
+  userId            String
+  productId         String
+  rating            Int
+  comment           String
+  createdDate       DateTime  @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id                String    @id @default(uuid())
+  userId            String?
+  guestEmail        String?
+  guestName         String?
+  guestToken        String?   @unique
+  guestFcmToken     String?
+  amount            Float
+  totalDmc          Float     @default(0)
+  spf               Float     @default(0)
+  currency          String
+  status            String
+  deliveryStatus    String
+  paymentConfirmed  Boolean   @default(false)
+  paymentClaimed    Boolean   @default(false)
+  adminConfirmedAvailability Boolean @default(false)
+  adminConfirmedAvailabilityAt DateTime?
+  cancelled         Boolean   @default(false)
+  cancelledAt       DateTime?
+  refundAmount      Float     @default(0)
+  reimbursed        Boolean   @default(false)
+  reimbursedAt      DateTime?
+  createDate        DateTime  @default(now())
+  paymentIntentId   String    @unique
+  clientOrderToken  String?   @unique
+  products          String[]
+  address           String?
+
+  userConfirmedDelivery   Boolean   @default(false)
+  userConfirmedDeliveryAt DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+
+model Settings {
+  id                String    @id @default(uuid())
+  bankName          String
+  bankAccountNumber String
+  accountHolderName String
+  hostels           String[]  @default([])
+  spf               Float     @default(100)
+  nextDeliveryTime  DateTime?
+  nextDeliveryEnabled Boolean @default(true)
+  whatsappNumber    String?
+  bannerTitle       String?
+  bannerSubtitle    String?
+  bannerDiscount    String?
+  bannerImage       String?
+  bannerColors      String[]  @default([])
+  bannerVisible     Boolean   @default(true)
+  updatedAt         DateTime  @updatedAt
+}
+
+model Category {
+  id    String @id @default(uuid())
+  label String @unique
+  icon  String
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  title      String
+  body       String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  orderId    String?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reimbursement {
+  id        String   @id @default(uuid())
+  amount    Float
+  createdAt DateTime @default(now())
+}
+enum Role {
+  USER
+  ADMIN
+  MANAGER
+}
