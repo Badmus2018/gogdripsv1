@@ -5,7 +5,7 @@ export const appConfig = {
   appName: "Gogodrips",
   appDescription: "Freshly baked, designed with love for accessories with our curated collection of trendy and unique items. From fashion to gadgets, we have something for everyone.",
   logoUrl: "/logo.png",
-  themeColor: "#fff",
+  themeColor: "#000",
   contactEmail: "contact@gogodrips.com",
   faqs: [
     {
