@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Input JSON file path (parent of project root)
-const filePath = path.join(__dirname, '..', '..', 'accessnmore-firebase-adminsdk-fbsvc-d5ddea5f15.json');
+const filePath = path.join(__dirname, '..', '..', 'gogodrips-firebase-adminsdk-fbsvc-c4c9f9ba07.json');
 // Output file path (same directory)
 const outputPath = path.join(__dirname, 'firebase-service-account-oneline.txt');
 
