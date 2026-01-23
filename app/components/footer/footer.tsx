@@ -25,7 +25,7 @@ const Footer: React.FC<FooterProps> = ({ whatsappNumber = null }) => {
   };
 
   return (
-    <footer style={{ background: appConfig.headerFooterBgColor }} className="text-slate-200 text-sm mt-16">
+    <footer style={{ background: appConfig.headerFooterBgColor, color: appConfig.headerFooterFontColor }} className="text-sm mt-16">
       <Container>
         <div className="px-8 flex flex-col md:flex-row justify-between pt-10 pb-4">
           <FooterList>
