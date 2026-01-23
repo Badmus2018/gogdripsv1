@@ -1,11 +1,11 @@
 export const appConfig = {
   aboutUsDescription: "Freshly baked, Designed with love",
   headerFooterBgColor: "#FFC5D3", // Default Tailwind bg-zinc-900
-  headerFooterFontColor: "#000", // Default Tailwind text-slate-200
+  headerFooterFontColor: "#fff", // Default Tailwind text-slate-200
   appName: "Gogodrips",
   appDescription: "Freshly baked, designed with love.",
   logoUrl: "/logo.png",
-  themeColor: "#000",
+  themeColor: "#fff",
   contactEmail: "contact@gogodrips.com",
   faqs: [
     {
