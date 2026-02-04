@@ -28,8 +28,11 @@ export default async function getProductById(params: ItemsParams) {
       return null;
     }
 
-
-    return product;
+    // Fix: convert image null to undefined for type compatibility
+    return {
+      ...product,
+      image: product.image === null ? undefined : product.image,
+    };
   } catch (error: any) {
     throw new Error(error);
   }

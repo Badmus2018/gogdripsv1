@@ -18,16 +18,11 @@ export async function POST(request: Request) {
     brand,
     category,
     inStock,
-    images,
+    image,
     stock,
     isVisible,
     discount,
   } = body;
-
-  // Ensure images is an array of strings (URLs)
-  const imageUrls = Array.isArray(images)
-    ? images.map((img: any) => typeof img === "string" ? img : img.url || img.image).filter(Boolean)
-    : [];
 
   const stockNum = stock ? parseInt(stock as any, 10) : 0;
   const remaining = stockNum;
@@ -46,7 +41,7 @@ export async function POST(request: Request) {
         stock: stockNum,
         remainingStock: remaining,
         isVisible: isVisible !== undefined ? isVisible : true,
-        images: imageUrls,
+        image: image,
         price: parseFloat(price),
         dmc: dmcValue,
         discount: discountValue,
@@ -73,16 +68,14 @@ export async function PUT(request: Request) {
   }
   
   const body = await request.json();
-  const { id, inStock, isVisible, discount, images } = body;
+  const { id, inStock, isVisible, discount, image } = body;
 
   const updateData: any = {};
   if (inStock !== undefined) updateData.inStock = inStock;
   if (isVisible !== undefined) updateData.isVisible = isVisible;
   if (discount !== undefined) updateData.discount = parseFloat(discount);
-  if (images !== undefined) {
-    updateData.images = Array.isArray(images)
-      ? images.map((img: any) => typeof img === "string" ? img : img.url || img.image).filter(Boolean)
-      : [];
+  if (image !== undefined) {
+    updateData.image = image;
   }
 
   try {

@@ -1,61 +1,36 @@
 "use client";
 
+
 import React from "react";
-import {
-  CartProductType,
-  SelectedImgType,
-} from "@/app/product/[productId]/product-details";
 import Image from "next/image";
-import { appConfig } from "@/config/appConfig";
 
 interface ProductImageProps {
-  cartProduct: CartProductType;
-  product: any;
-  handleColorSelect: (value: SelectedImgType) => void;
-  images?: SelectedImgType[];
+  image: string;
+  alt: string;
 }
 
-const ProductImage: React.FC<ProductImageProps> = ({
-  cartProduct,
-  product,
-  handleColorSelect,
-  images,
-}) => {
-  const productImages = images || product.images;
+const ProductImage: React.FC<ProductImageProps> = ({ image, alt }) => {
+  const isDataUrl = typeof image === 'string' && image.startsWith('data:');
   return (
     <div className="flex-col items-center justify-center h-full max-h-[500px] min-h-[300px] sm:min-h-[400px]">
       <div className="flex max-h-[500px] min-h-[300px] sm:min-h-[400px] relative mb-1">
-        <Image
-          src={cartProduct.selectedImg.image}
-          alt={cartProduct.name}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 550px"
-          className="object-contain aspect-square"
-        />
-      </div>
-      <div className="hidden sm:flex items-center justify-center gap-4 cursor-pointer border h-[4.8rem] w-full max-w-[550px] min-w-[300px] sm:min-w-[400px] rounded-md">
-        {productImages.map((image: SelectedImgType) => {
-          return (
-            <div
-              key={image.color}
-              onClick={() => handleColorSelect(image)}
-              style={{ borderColor: appConfig.themeColor }}
-              className={`relative h-[4.3rem] w-[4.3rem] ml-1 aspect-square rounded active:scale-95 transition ${
-                cartProduct.selectedImg.color === image.color
-                  ? "border-[1.5px]"
-                  : "border-none"
-              }`}
-            >
-              <Image
-                src={image.image}
-                alt={image.color}
-                fill
-                sizes="70px"
-                className="object-contain"
-              />
-            </div>
-          );
-        })}
+        {isDataUrl ? (
+          <img
+            src={image}
+            alt={alt}
+            style={{ objectFit: 'contain', width: '100%', height: 'auto', display: 'block', aspectRatio: '1/1', maxHeight: '500px', minHeight: '300px' }}
+            className="object-contain aspect-square w-full block"
+          />
+        ) : (
+          <Image
+            src={image}
+            alt={alt}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 550px"
+            className="object-contain aspect-square"
+            unoptimized={false}
+          />
+        )}
       </div>
     </div>
   );

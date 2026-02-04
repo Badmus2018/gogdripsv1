@@ -2,13 +2,9 @@
 
 import { truncateText } from "@/utils/truncate-text";
 import { formatPrice } from "@/utils/format-price";
-import { Rating } from "@mui/material";
-import Image from "next/image";
 import ProductImage from "./product-image";
 import React, { useState } from "react";
 import Link from "next/link";
-import { productRating } from "@/utils/product-rating";
-import { ChevronDown } from "lucide-react";
 import Status from "../status";
 import { Check, X } from "lucide-react";
 import { useCart } from "@/context/cart-context";
@@ -24,6 +20,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
   const { handleAddProductToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [showImage, setShowImage] = useState(false);
+  const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
 
   const remaining = data.remainingStock ?? data.stock ?? 0;
 
@@ -35,9 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
   };
 
   const handleQuantityIncrease = () => {
-    if (quantity >= remaining) {
-      return toast.error(`Only ${remaining} left in stock`);
-    }
+    if (quantity >= remaining) return toast.error(`Only ${remaining} left in stock`);
     setQuantity((prev) => prev + 1);
   };
 
@@ -58,7 +54,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
       description: data.description,
       category: data.category,
       brand: data.brand,
-      selectedImg: { ...data.images[0] },
+      selectedImg: {
+        image: productImageUrl || data.image || ""
+      },
       quantity,
       price: data.price - (data.discount || 0),
       dmc: data.dmc || 0,
@@ -70,93 +68,83 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
     setQuantity(1);
   };
 
+  const fetchProductImage = async () => {
+    setLoadingImage(true);
+    try {
+      const res = await fetch(`/api/product/${data.id}`);
+      if (!res.ok) throw new Error("Failed to fetch product");
+
+      const product = await res.json();
+      const imgUrl = product.image;
+      console.log("Fetched product image:", imgUrl);
+      if (!imgUrl || typeof imgUrl !== 'string' || imgUrl.length < 10) throw new Error("No image found or invalid image");
+      setProductImageUrl(imgUrl);
+    } catch (err) {
+      console.error(err);
+      setProductImageUrl(null);
+      toast.error("Failed to load image");
+    } finally {
+      setLoadingImage(false);
+    }
+  };
+
   return (
     <div className="col-span-1 bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow flex flex-col h-full">
-      {/* Product Image - Lazy load with button */}
+      {/* Product Image */}
       <div className="aspect-square overflow-hidden relative w-full bg-gray-50 flex items-center justify-center">
         {!showImage ? (
           <button
             className="px-3 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition"
-            onClick={() => setShowImage(true)}
+            onClick={() => {
+              setShowImage(true);
+              fetchProductImage();
+            }}
           >
             Show Image
           </button>
+        ) : loadingImage ? (
+          <div className="text-gray-500">Loading...</div>
+        ) : productImageUrl ? (
+          <ProductImage image={productImageUrl} alt={data.name} />
         ) : (
-          data.images && data.images.length > 0 ? (
-            <ProductImage
-              cartProduct={{
-                id: data.id,
-                name: data.name,
-                description: data.description,
-                category: data.category,
-                brand: data.brand,
-                selectedImg: typeof data.images[0] === 'string' ? { color: 'Default', colorCode: '#000', image: data.images[0] } : data.images[0],
-                quantity: 1,
-                price: data.price,
-                dmc: data.dmc || 0,
-                remainingStock: remaining,
-              }}
-              product={data}
-              handleColorSelect={() => {}}
-              images={data.images.map((img: any, idx: number) =>
-                typeof img === 'string'
-                  ? { color: `Variant ${idx + 1}`, colorCode: '#000', image: img }
-                  : img
-              )}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
-              No Image
-            </div>
-          )
+          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
+            <span>No image found or invalid image URL</span>
+          </div>
         )}
       </div>
 
       {/* Product Info */}
       <div className="flex flex-col items-center w-full gap-1 flex-1 p-3 text-center">
-                {/* WhatsApp Share Link */}
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/product/${data.id}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-green-600 hover:text-green-800 text-xs font-medium"
-                >
-                  Share on WhatsApp
-                </a>
         <Link href={`/product/${data.id}`}>
           <div className="font-medium text-[1.04rem] mb-1 hover:text-slate-700 cursor-pointer transition">
             {truncateText(data.name)}
           </div>
         </Link>
 
-
-        {/* Product Description */}
         {data.description && (
           <div className="text-xs text-slate-500 mb-1 line-clamp-3 min-h-[3.8em]">
             {truncateText(data.description, 180)}
           </div>
         )}
 
-
-
         {/* Price & Discount */}
         {data.discount > 0 ? (
           <div className="flex flex-col items-center gap-1 mt-3">
             <div className="flex flex-wrap font-normal text-md text-slate-400 gap-2 mb-1 items-center justify-center">
               <span className="line-through text-lg">{formatPrice(data.price)}</span>
-              <span className="bg-pink-600 text-white text-xs font-semibold px-2 py-1 rounded">{Math.round((data.discount / data.price) * 100)}% OFF</span>
+              <span className="bg-pink-600 text-white text-xs font-semibold px-2 py-1 rounded">
+                {Math.round((data.discount / data.price) * 100)}% OFF
+              </span>
             </div>
-            <div className="font-bold text-[1.3rem] text-slate-800">{formatPrice(data.price - data.discount)}</div>
+            <div className="font-bold text-[1.3rem] text-slate-800">
+              {formatPrice(data.price - data.discount)}
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-1 mt-3">
-            <div className="font-semibold text-[1.3rem]">
-              {formatPrice(data.price)}
-            </div>
+            <div className="font-semibold text-[1.3rem]">{formatPrice(data.price)}</div>
           </div>
         )}
-
-        <div className="mt-3">free delivery</div>
 
         {/* Stock Status */}
         <div className="mt-3 mb-2 flex gap-2 items-center justify-center">
@@ -170,10 +158,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
         </div>
       </div>
 
-      {/* Quantity & Add to Cart Controls (sticky to bottom) */}
+      {/* Quantity & Add to Cart */}
       {data.inStock && remaining > 0 ? (
         <div className="flex flex-col gap-2 mt-2">
-          {/* Quantity Controls */}
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={handleQuantityDecrease}
@@ -192,20 +179,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
             </button>
           </div>
 
-          {/* Add to Cart Button */}
           <div className="w-full">
-            <Button
-              label="Add to Cart"
-              onClick={handleAddToCart}
-              small
-              roundedBottom
-            />
+            <Button label="Add to Cart" onClick={handleAddToCart} small roundedBottom />
           </div>
         </div>
       ) : (
-        <div className="mt-2 py-2 text-pink-600 font-semibold text-sm">
-          Out of Stock
-        </div>
+        <div className="mt-2 py-2 text-pink-600 font-semibold text-sm">Out of Stock</div>
       )}
     </div>
   );

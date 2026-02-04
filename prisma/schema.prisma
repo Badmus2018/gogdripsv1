@@ -60,7 +60,7 @@ model Product {
   stock             Int     @default(0)
   remainingStock    Int     @default(0)
   isVisible         Boolean @default(true)
-  images            String[]
+  image             String?
   reviews           Review[]
 }
 

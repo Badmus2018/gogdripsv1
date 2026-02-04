@@ -35,8 +35,6 @@ export interface CartProductType {
 
 
 export type SelectedImgType = {
-  color: string;
-  colorCode: string;
   image: string;
 };
 
@@ -46,18 +44,7 @@ const Horizontal = () => {
 
 const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   
-  const normalizedImages = Array.isArray(product.images) 
-    ? product.images.map((img: any, index: number) => {
-        if (typeof img === 'string') {
-          return {
-            color: `Variant ${index + 1}`,
-            colorCode: "#000000",
-            image: img
-          };
-        }
-        return img;
-      })
-    : [];
+  // No more image array or color logic
 
   const { cartProducts, handleAddProductToCart } = useCart();
   const [isProductInCart, setIsProductInCart] = useState<boolean>(false);
@@ -67,11 +54,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     description: product.description,
     category: product.category,
     brand: product.brand,
-    selectedImg: normalizedImages[0] ? { ...normalizedImages[0] } : {
-      color: "White",
-      colorCode: "#FFFFFF",
-      image: ""
-    },
+    selectedImg: { image: product.image },
     quantity: 1,
     price: product.price - (product.discount || 0),
     dmc: product.dmc || 0,
@@ -93,14 +76,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
     }
   }, [cartProducts, product.id]);
 
-  const handleColorSelect = useCallback(
-    (value: SelectedImgType) => {
-      setCartProduct((prev) => {
-        return { ...prev, selectedImg: value };
-      });
-    },
-    []
-  );
+  // No color selection logic needed
 
   const handleQuantityIncrease = useCallback(() => {
     const max = product.remainingStock ?? product.stock ?? 99;
@@ -142,12 +118,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 sm:mt-6">
       <div>
-        <ProductImage
-          cartProduct={cartProduct}
-          product={product}
-          handleColorSelect={handleColorSelect}
-          images={normalizedImages}
-        />
+        <ProductImage image={product.image} alt={product.name} />
       </div>
       <div className="flex flex-col gap-1 text-slate-500 text-sm my-auto">
         <h2 className="text-3xl font-medium text-slate-700 mb-1">
@@ -207,11 +178,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product }) => {
               Share on WhatsApp
             </a>
           )}
-          <SetColor
-            images={normalizedImages}
-            cartProduct={cartProduct}
-            handleColorSelect={handleColorSelect}
-          />
+          {/* Color selection removed */}
           <SetQuantity
             cartProduct={cartProduct}
             handleQuantityIncrease={handleQuantityIncrease}

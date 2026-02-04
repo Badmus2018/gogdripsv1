@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageType } from "@/app/admin/add-products/add-product-form";
+import { ImageType } from "@/app/types/image-type";
 import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 
@@ -32,7 +32,7 @@ const SelectImage: React.FC<SelectImageProps> = ({
       {isDragActive ? (
         <p>Drop the image here...</p>
       ) : (
-        <p>+ {item?.color} Image</p>
+        <p>+ Select Image</p>
       )}
     </div>
   );

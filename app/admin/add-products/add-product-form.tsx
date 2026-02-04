@@ -3,55 +3,34 @@
 import Button from "@/app/components/button";
 import Header from "@/app/components/heading";
 import CategoryInput from "@/app/components/inputs/category-input";
-import { CATEGORY_ICONS } from "@/app/actions/category-icons";
 import CustomCheckbox from "@/app/components/inputs/custom-checkbox";
 import Input from "@/app/components/inputs/input";
-import SelectColor from "@/app/components/inputs/select-color";
 import TextArea from "@/app/components/inputs/text-area";
-// import { categories } from "@/utils/categories";
-import { colors } from "@/utils/colors";
+import { CATEGORY_ICONS } from "@/app/actions/category-icons";
 import { useCallback, useEffect, useState } from "react";
 import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
-export type ImageType = {
-  color: string;
-  colorCode: string;
-  image: File | null;
-};
-
-export type UploadedImageType = {
-  color: string;
-  colorCode: string;
-  image: string;
-};
-
 const AddProductForm = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [images, setImages] = useState<ImageType[]>([]);
-  const [isProductCreated, setIsProductCreated] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
   const [categories, setCategories] = useState<{ label: string; icon: string }[]>([]);
-  // Fetch categories from API
+
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("/api/category");
-        if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
-        // Always include 'All' category at the start
-        const allCategory = { label: "All", icon: "Circle" };
-        if (!data || !Array.isArray(data) || data.length === 0) {
-          setCategories([allCategory]);
-        } else {
-          // Remove any duplicate 'All' if present
-          const filtered = data.filter((cat) => cat.label !== "All");
-          setCategories([allCategory, ...filtered]);
-        }
-      } catch (err) {
-        setCategories([{ label: "All", icon: "Circle" }]);
+        // Always include 'All' as the first category
+        let allCategory = { label: "All", icon: "Store" };
+        let filtered = Array.isArray(data) ? data.filter(cat => cat.label !== "All") : [];
+        setCategories([allCategory, ...filtered]);
+      } catch {
+        setCategories([{ label: "All", icon: "Store" }]);
       }
     };
     fetchCategories();
@@ -69,303 +48,163 @@ const AddProductForm = () => {
       name: "",
       description: "",
       brand: "",
-      category: "",
+      category: "All",
       inStock: false,
-      stock: 0,
       isVisible: true,
-      images: [],
+      stock: 0,
       price: "",
       dmc: "",
       discount: "",
     },
   });
 
-  const setCustomValue = useCallback((id: string, value: any) => {
-    setValue(id, value, {
-      shouldValidate: true,
-      shouldDirty: true,
-      shouldTouch: true,
-    });
-  }, [setValue]);
-
-  useEffect(() => {
-    setCustomValue("images", images);
-  }, [images, setCustomValue]);
-
-  useEffect(() => {
-    if (isProductCreated) {
-      reset();
-      setImages([]);
-      setIsProductCreated(false);
-    }
-  }, [isProductCreated, reset]);
-
-  const onSubmit: SubmitHandler<FieldValues> = async (data) => {
-    setIsLoading(true);
-    let uploadedImages: UploadedImageType[] = [];
-
-    if (!data.category) {
-      setIsLoading(false);
-      return toast.error("Category is not selected!");
-    }
-
-    if (!data.images || data.images.length === 0) {
-      setIsLoading(false);
-      return toast.error("No selected image!");
-    }
-
-    const handleImageUploads = async () => {
-      toast("Creating product, please wait...");
-      try {
-        for (const item of data.images) {
-          if (item.image) {
-            // Upload to server API
-            const formData = new FormData();
-            formData.append("file", item.image);
-            formData.append("color", item.color);
-
-            const response = await fetch("/api/upload", {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!response.ok) {
-              throw new Error("Upload failed");
-            }
-
-            const { url } = await response.json();
-            uploadedImages.push({
-              ...item,
-              image: url,
-            });
-            console.log("File available at", url);
-          }
-        }
-        return true; // Upload successful
-      } catch (error) {
-        setIsLoading(false);
-        console.log("Error handling image uploads", error);
-        toast.error("Error handling image uploads");
-        return false; // Upload failed
-      }
-    };
-    
-    const uploadSuccess = await handleImageUploads();
-    if (!uploadSuccess) {
-      return; // Stop if upload failed
-    }
-
-    const dmc = data.dmc === "" || data.dmc === 0 ? 0 : Number(data.dmc);
-    const discount = data.discount === "" || data.discount === 0 ? 0 : Number(data.discount);
-
-    const { list, ...rest } = data;
-    // Always include 'All' as a category for every product, plus the selected category if not 'All'
-    let productCategories = ['All'];
-    if (rest.category && rest.category !== 'All') {
-      productCategories.push(rest.category);
-    }
-    const productData = {
-      ...rest,
-      images: uploadedImages.map(img => img.image),
-      dmc: dmc,
-      discount: discount,
-      stock: data.stock ? Number(data.stock) : 0,
-      categories: productCategories,
-    };
-
-    axios
-      .post("/api/product", productData)
-      .then(() => {
-        toast.success("Product created");
-        setIsProductCreated(true);
-        router.push("/admin/manage-products");
-      })
-      .catch((error) => {
-        toast.error("Something went wrong.");
-        console.log("Error creating product", error);
-      })
-      .finally(() => {
-        setIsLoading(false);
+  const setCustomValue = useCallback(
+    (id: string, value: any) => {
+      setValue(id, value, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
       });
-  };
+    },
+    [setValue]
+  );
 
   const category = watch("category");
 
-  const addImageToState = useCallback((value: ImageType) => {
-    setImages((prev) => {
-      if (!prev) {
-        return [value];
+  const onSubmit: SubmitHandler<FieldValues> = async (data) => {
+    if (!image) {
+      toast.error("Product image is required");
+      return;
+    }
+
+    setIsLoading(true);
+    toast.loading("Creating product...");
+
+    try {
+      console.log("FORM DATA:", data);
+
+      const formData = new FormData();
+      formData.append("file", image);
+
+      console.log("Uploading image...");
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      console.log("Upload response:", uploadRes);
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text();
+        console.error("Upload failed:", err);
+        throw new Error("Image upload failed");
       }
 
-      return [...prev, value];
-    });
-  }, []);
+      const uploadData = await uploadRes.json();
+      console.log("Upload data:", uploadData);
 
-  const removeImageFromState = useCallback((value: ImageType) => {
-    setImages((prev) => {
-      if (prev) {
-        const filteredImages = prev.filter(
-          (item) => item.color !== value.color
-        );
-        return filteredImages;
+      const productData = {
+        ...data,
+        image: uploadData.url || uploadData.imageUrl,
+        category: data.category || "All",
+        price: Number(data.price || 0),
+        stock: Number(data.stock || 0),
+        dmc: Number(data.dmc || 0),
+        discount: Number(data.discount || 0),
+      };
+
+      console.log("Product payload:", productData);
+
+      const res = await axios.post("/api/product", productData);
+      console.log("Product created:", res.data);
+
+      toast.success("Product created");
+      router.push("/admin/manage-products");
+    } catch (error: any) {
+      if (error && typeof error === 'object' && 'response' in error && error.response) {
+        console.error("CREATE PRODUCT ERROR:", error.response.data);
+        toast.error(error.response.data?.message || "Failed to create product");
+      } else {
+        console.error("CREATE PRODUCT ERROR:", error);
+        toast.error("Failed to create product");
       }
-
-      return prev;
-    });
-  }, []);
+    } finally {
+      setIsLoading(false);
+      toast.dismiss();
+    }
+  };
 
   return (
-    <div className="max-w-[1000px] mx-auto">
-      <div className="mb-8">
-        <Header title="Add a Product" center />
+    <div className="max-w-4xl mx-auto">
+      <Header title="Add Product" center />
+
+      <Input id="name" label="Product Name" register={register} errors={errors} required />
+      <TextArea id="description" label="Description" register={register} errors={errors} required />
+
+      <Input id="brand" label="Brand" register={register} errors={errors} required />
+
+      <style jsx>{`
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+      <div className="grid grid-cols-2 gap-4">
+        <Input id="price" label="Price" type="number" register={register} errors={errors} required />
+        <Input id="stock" label="Stock" type="number" register={register} errors={errors} />
+        <Input id="discount" label="Discount" type="number" register={register} errors={errors} />
+        <Input id="dmc" label="DMC" type="number" register={register} errors={errors} />
       </div>
 
-      {/* Product Information Section */}
-      <div className="bg-white rounded-lg p-6 mb-6 border border-slate-300" style={{boxShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
-        <h3 className="text-lg font-semibold mb-4 text-slate-700">Product Information</h3>
-        <div className="space-y-4">
-          <Input
-            id="name"
-            label="Product Name"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            required
-          />
-          <TextArea
-            id="description"
-            label="Product Description"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            required
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              id="brand"
-              label="Brand"
-              disabled={isLoading}
-              register={register}
-              errors={errors}
-              required
-            />
-          </div>
-        </div>
+      <div className="flex gap-4 mt-4">
+        <CustomCheckbox id="inStock" register={register} label="In Stock" />
+        <CustomCheckbox id="isVisible" register={register} label="Visible to customers" />
       </div>
 
-      {/* Pricing Section */}
-      <div className="bg-white rounded-lg p-6 mb-6 border border-slate-300" style={{boxShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
-        <h3 className="text-lg font-semibold mb-4 text-slate-700">Pricing & Stock</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Input
-            id="price"
-            label="Price (₦)"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type="number"
-            required
-          />
-          <Input
-            id="discount"
-            label="Discount (₦)"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type="number"
-          />
-          <Input
-            id="dmc"
-            label="DMC (₦)"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type="number"
-          />
-          <Input
-            id="stock"
-            label="Stock Quantity"
-            disabled={isLoading}
-            register={register}
-            errors={errors}
-            type="number"
-          />
-        </div>
-        <div className="mt-4 flex gap-6">
-          <CustomCheckbox
-            id="inStock"
-            register={register}
-            label="This product is in stock"
-          />
-          <CustomCheckbox
-            id="isVisible"
-            register={register}
-            label="Make this product visible to customers"
-          />
-        </div>
+      <div className="mt-6">
+        <label htmlFor="category" className="block mb-2 font-medium text-slate-700">Category</label>
+        <select
+          id="category"
+          {...register("category")}
+          className="w-full p-2 border rounded"
+          disabled={isLoading}
+          value={category}
+          onChange={e => setCustomValue("category", e.target.value)}
+        >
+          {categories.map((item) => (
+            <option key={item.label} value={item.label}>{item.label}</option>
+          ))}
+        </select>
+        {/* Category is now optional, no error shown */}
       </div>
 
-      {/* Category Section */}
-      <div className="bg-white rounded-lg p-6 mb-6 border border-slate-300" style={{boxShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
-        <h3 className="text-lg font-semibold mb-4 text-slate-700">Category</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {categories.map((item) => {
-            let Icon = CATEGORY_ICONS.find(i => i.name === "Tag")?.icon;
-            if (item.label === "All") {
-              Icon = CATEGORY_ICONS.find(i => i.name === "Store")?.icon;
-            } else if (item.icon) {
-              const foundIcon = CATEGORY_ICONS.find(i => i.name === item.icon)?.icon;
-              if (foundIcon) Icon = foundIcon;
-            }
-            // Final fallback to Tag if still undefined
-            if (!Icon) {
-              Icon = CATEGORY_ICONS.find(i => i.name === "Tag")!.icon;
-            }
-            return (
-              <div key={item.label}>
-                <CategoryInput
-                  onClick={(category) => setCustomValue("category", category)}
-                  selected={category === item.label}
-                  label={item.label}
-                  icon={Icon}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Color & Images Section */}
-      <div className="bg-white rounded-lg p-6 mb-6 border border-slate-300" style={{boxShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
-        <h3 className="text-lg font-semibold mb-2 text-slate-700">Product Colors & Images</h3>
-        <p className="text-sm text-slate-600 mb-4">
-          Select available colors and upload an image for each. Colors without images will be ignored.
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {colors.map((item, index) => {
-            return (
-              <SelectColor
-                key={index}
-                item={item}
-                addImageToState={addImageToState}
-                removeImageFromState={removeImageFromState}
-                isProductCreated={isProductCreated}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Submit Button */}
-      <div className="flex justify-center mb-8">
-        <div className="w-full md:w-96">
-          <Button
-            label={isLoading ? "Creating Product..." : "Add Product"}
-            disabled={isLoading}
-            onClick={handleSubmit(onSubmit)}
-            type="submit"
+      <div className="mt-6">
+        <input
+          type="file"
+          accept="image/*"
+          disabled={isLoading}
+          onChange={(e) => e.target.files && setImage(e.target.files[0])}
+        />
+        {image && (
+          <img
+            src={URL.createObjectURL(image)}
+            className="mt-3 max-w-xs rounded"
+            alt="Preview"
           />
-        </div>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <Button
+          label={isLoading ? "Creating..." : "Add Product"}
+          onClick={handleSubmit(onSubmit)}
+          disabled={isLoading}
+        />
       </div>
     </div>
   );

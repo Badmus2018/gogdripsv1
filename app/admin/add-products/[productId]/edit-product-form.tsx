@@ -1,32 +1,19 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import Button from "@/app/components/button";
 import Header from "@/app/components/heading";
 import CategoryInput from "@/app/components/inputs/category-input";
 import * as Icons from "lucide-react";
 import CustomCheckbox from "@/app/components/inputs/custom-checkbox";
 import Input from "@/app/components/inputs/input";
-import SelectColor from "@/app/components/inputs/select-color";
 import TextArea from "@/app/components/inputs/text-area";
-// import { categories } from "@/utils/categories";
-import { colors } from "@/utils/colors";
-import { useCallback, useEffect, useState } from "react";
-import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
-import toast from "react-hot-toast";
-import axios from "axios";
-import { useRouter } from "next/navigation";
 
-export type ImageType = {
-  color: string;
-  colorCode: string;
-  image: File | null;
-};
-
-export type UploadedImageType = {
-  color: string;
-  colorCode: string;
-  image: string;
-};
+// Use central ImageType definition
+import { ImageType } from "@/app/types/image-type";
 
 interface EditProduct {
   id: string;
@@ -38,7 +25,7 @@ interface EditProduct {
   stock?: number;
   remainingStock?: number;
   isVisible?: boolean;
-  images: string[];
+  image?: string; // single image string
   price: number;
   dmc?: number;
   discount?: number;
@@ -47,13 +34,12 @@ interface EditProduct {
 const EditProductForm = ({ product }: { product: EditProduct }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [images, setImages] = useState<ImageType[] | null>();
-  const [oldImages, setOldImages] = useState<UploadedImageType[]>();
+  const [image, setImage] = useState<ImageType>(null);
+  const [oldImage, setOldImage] = useState<string | undefined>(undefined);
   const [categories, setCategories] = useState<{ label: string; icon: string }[]>([]);
 
   // Helper to get icon component from string
   const getIconComponent = (iconName: string) => {
-    // Fallback to Circle if not found
     return (Icons as any)[iconName] || Icons.Circle;
   };
 
@@ -62,15 +48,12 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("/api/category");
-        if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
-        // Always include 'All' category at the start
         const allCategory = { label: "All", icon: "Circle" };
         if (!data || !Array.isArray(data) || data.length === 0) {
           setCategories([allCategory]);
         } else {
-          // Remove any duplicate 'All' if present
-          const filtered = data.filter((cat) => cat.label !== "All");
+          const filtered = data.filter((cat: any) => cat.label !== "All");
           setCategories([allCategory, ...filtered]);
         }
       } catch (err) {
@@ -79,7 +62,6 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
     };
     fetchCategories();
   }, []);
-
 
   const {
     register,
@@ -96,7 +78,6 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
       inStock: false,
       stock: 0,
       isVisible: true,
-      images: [],
       price: "",
       dmc: "",
       discount: "",
@@ -121,117 +102,60 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
     setCustomValue("isVisible", (product as any).isVisible ?? true);
     setCustomValue("price", product.price);
     setCustomValue("dmc", (product as any).dmc || 0);
-    setOldImages(
-      Array.isArray(product.images)
-        ? product.images.map((img: string) => ({
-            color: "",
-            colorCode: "",
-            image: img,
-          }))
-        : []
-    );
+    setOldImage(product.image);
   }, [product, setCustomValue]);
 
   useEffect(() => {
-    setCustomValue("images", images);
-  }, [images, setCustomValue]);
+    setCustomValue("image", image);
+  }, [image, setCustomValue]);
+
+  const category = watch("category");
 
   const onSubmit: SubmitHandler<FieldValues> = async (data) => {
     setIsLoading(true);
-    let uploadedImages: UploadedImageType[] = [];
-
     if (!data.category) {
       setIsLoading(false);
-      return toast.error("Category is not selected!");
+      return alert("Category is not selected!");
     }
-
-    const hasOldImages = oldImages && oldImages.length > 0;
-    const hasNewImages = data.images && data.images.length > 0;
-    if (!hasOldImages && !hasNewImages) {
+    if (!image && !oldImage) {
       setIsLoading(false);
-      return toast.error("No selected image!");
+      return alert("No image selected!");
     }
-
-    // 1. Find removed images (present in oldImages but not in new images by color)
-    const newColors = (data.images || []).map((img: any) => img.color);
-    const removedImages = (oldImages || []).filter(
-      (oldImg) => !newColors.includes(oldImg.color)
-    );
-
-    // 2. Delete removed images from storage (call DELETE /api/upload)
-    if (removedImages.length > 0) {
-      await Promise.all(
-        removedImages.map(async (img) => {
-          if (img.image) {
-            try {
-              await fetch("/api/upload", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: img.image }),
-              });
-            } catch (e) {
-              // Log but don't block update
-              console.error("Failed to delete old image", img.image, e);
-            }
-          }
-        })
-      );
-    }
-
-    // 3. Upload new images (if any)
-    if (data.images && data.images.length > 0) {
-      const handleImageUploads = async () => {
-        toast("Editing product, please wait...");
-        try {
-          for (const item of data.images) {
-            if (item.image && typeof item.image !== "string") {
-              // Only upload if it's a new File (not a string URL)
-              const formData = new FormData();
-              formData.append("file", item.image);
-              formData.append("color", item.color);
-
-              const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
-
-              if (!response.ok) {
-                throw new Error("Upload failed");
-              }
-
-              const { url } = await response.json();
-              uploadedImages.push({
-                ...item,
-                image: url,
-              });
-              console.log("File available at", url);
-            } else if (item.image && typeof item.image === "string") {
-              // Keep existing image URLs
-              uploadedImages.push(item);
-            }
-          }
-          return true; // Upload successful
-        } catch (error) {
-          setIsLoading(false);
-          console.log("Error handling image uploads", error);
-          toast.error("Error handling image uploads");
-          return false; // Upload failed
-        }
-      };
-
-      const uploadSuccess = await handleImageUploads();
-      if (!uploadSuccess) {
-        return; // Stop if upload failed
+    let imageUrl = oldImage;
+    if (image && typeof image !== "string") {
+      const formData = new FormData();
+      formData.append("file", image);
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (!response.ok) throw new Error("Upload failed");
+        const { url } = await response.json();
+        imageUrl = url;
+      } catch (error) {
+        setIsLoading(false);
+        alert("Image upload failed");
+        return;
       }
     }
-
+    if (image && oldImage && typeof image !== "string") {
+      try {
+        await fetch("/api/upload", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: oldImage }),
+        });
+      } catch (e) {
+        // Log but don't block update
+        console.error("Failed to delete old image", oldImage, e);
+      }
+    }
     const dmc = data.dmc === "" || data.dmc === 0 ? 0 : Number(data.dmc);
-
-    // 4. Save only the uploadedImages (new + kept)
     const discount = data.discount === "" || data.discount === 0 ? 0 : Number(data.discount);
     const productData = {
       ...data,
-      images: uploadedImages.map(img => img.image),
+      image: imageUrl,
       dmc: dmc,
       discount: discount,
       stock: data.stock !== undefined ? Number(data.stock) : undefined,
@@ -240,46 +164,20 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
           ? Number(data.remainingStock)
           : undefined,
     };
-
     axios
       .put("/api/product/" + product.id, productData)
       .then(() => {
-        toast.success("Product edited successfully");
+        alert("Product edited successfully");
         router.back();
       })
       .catch((error) => {
-        toast.error("Oops! Something went wrong.");
-        console.log("Error creating product", error);
+        alert("Oops! Something went wrong.");
+        console.log("Error editing product", error);
       })
       .finally(() => {
         setIsLoading(false);
       });
   };
-
-  const category = watch("category");
-
-  const addImageToState = useCallback((value: ImageType) => {
-    setImages((prev) => {
-      if (!prev) {
-        return [value];
-      }
-
-      return [...prev, value];
-    });
-  }, []);
-
-  const removeImageFromState = useCallback((value: ImageType) => {
-    setImages((prev) => {
-      if (prev) {
-        const filteredImages = prev.filter(
-          (item) => item.color !== value.color
-        );
-        return filteredImages;
-      }
-
-      return prev;
-    });
-  }, []);
 
   return (
     <>
@@ -355,12 +253,11 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
       />
       <div className="w-full font-medium">
         <div className="mb-2 font-semibold">Select a Category</div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h[50vh] overfolow-y-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto">
           {categories.map((item) => {
             if (item.label === "All") {
               return null;
             }
-
             return (
               <div key={item.label} className="col-span">
                 <CategoryInput
@@ -373,40 +270,31 @@ const EditProductForm = ({ product }: { product: EditProduct }) => {
             );
           })}
         </div>
-        <div className="w-full flex flex-col flex-wrap gap-4 mt-5">
-          <div>
-            <div className="font-bold">
-              Select the available product colors and upload their images.
+        <div className="w-full flex flex-col gap-4 mt-5">
+          <div className="font-bold">Product Image</div>
+          <div className="text-small mb-2">Upload a single image for this product.</div>
+          <input
+            type="file"
+            accept="image/*"
+            disabled={isLoading}
+            onChange={e => {
+              if (e.target.files && e.target.files[0]) {
+                setImage(e.target.files[0]);
+              }
+            }}
+          />
+          {oldImage && !image && (
+            <div className="mt-2">
+              <span className="text-xs">Current image:</span>
+              <img src={oldImage} alt="Current product" className="w-32 h-32 object-cover rounded mt-1" />
             </div>
-            <div className="text-small">
-              You must upload an image for each of the color selected otherwise
-              your color selection will be ignored.
+          )}
+          {image && typeof image !== "string" && (
+            <div className="mt-2">
+              <span className="text-xs">Selected image:</span>
+              <img src={URL.createObjectURL(image)} alt="Selected" className="w-32 h-32 object-cover rounded mt-1" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {colors.map((item, index) => {
-              // Only pass previous image if color matches
-              const matchedImage = Array.isArray(product.images)
-                ? product.images
-                    .filter((img: string) => img && item.color && img.toLowerCase().includes(item.color.toLowerCase()))
-                    .map((img: string) => ({
-                      color: item.color,
-                      colorCode: item.colorCode,
-                      image: img,
-                    }))
-                : [];
-              return (
-                <SelectColor
-                  key={index}
-                  item={item}
-                  addImageToState={addImageToState}
-                  removeImageFromState={removeImageFromState}
-                  isProductCreated={false}
-                  previousImages={matchedImage}
-                />
-              );
-            })}
-          </div>
+          )}
         </div>
       </div>
       <Button

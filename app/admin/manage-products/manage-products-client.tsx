@@ -47,7 +47,7 @@ const ManageProductsClient: React.FC<ManageProductsClientProps> = ({
         brand: product.brand,
         inStock: product.inStock,
         isVisible: (product as any).isVisible ?? true,
-        images: product.images,
+        images: Array.isArray(product.images) && product.images.length > 0 ? [product.images[0]] : [],
         stock: (product as any).remainingStock ?? (product as any).stock ?? 0,
       };
     });

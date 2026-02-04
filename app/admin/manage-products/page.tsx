@@ -19,8 +19,9 @@ const ManageProducts = async () => {
   // Only pass the fields needed by the client component to avoid serialization issues
   const products = productsRaw.map((product: any) => {
     // Deep clone all fields to ensure plain objects/arrays
-    const plainImages = Array.isArray(product.images)
-      ? JSON.parse(JSON.stringify(product.images))
+    // Only allow access to the first image/color
+    const plainImages = Array.isArray(product.images) && product.images.length > 0
+      ? [JSON.parse(JSON.stringify(product.images[0]))]
       : [];
     const plainReviews = Array.isArray(product.reviews)
       ? product.reviews.map((review: any) => ({
