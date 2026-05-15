@@ -15,11 +15,19 @@ const NotificationButton: React.FC<NotificationButtonProps> = ({ userId }) => {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isLoading, setIsLoading] = useState(false);
 
+
   useEffect(() => {
     // Check if notifications are supported
     if (typeof window !== "undefined" && "Notification" in window) {
       setIsSupported(true);
       setPermission(Notification.permission);
+
+      // Listen for permission changes (e.g., user changes in browser settings)
+      const handlePermissionChange = () => {
+        setPermission(Notification.permission);
+      };
+      window.addEventListener("focus", handlePermissionChange);
+      return () => window.removeEventListener("focus", handlePermissionChange);
     }
 
     // Listen for foreground messages
@@ -37,7 +45,7 @@ const NotificationButton: React.FC<NotificationButtonProps> = ({ userId }) => {
     setIsLoading(true);
     try {
       const token = await requestNotificationPermission();
-      
+
       if (token && userId) {
         // Save token to database
         const response = await fetch("/api/notifications/register-token", {
@@ -50,10 +58,18 @@ const NotificationButton: React.FC<NotificationButtonProps> = ({ userId }) => {
           setPermission("granted");
           toast.success("Notifications enabled! You'll receive updates on your device.");
         } else {
+          const errorText = await response.text();
           toast.error("Failed to register for notifications");
+          console.error("Failed to register token:", errorText);
         }
       } else if (!token) {
-        toast.error("Please allow notifications in your browser settings");
+        // Permission may be denied or blocked
+        setPermission(Notification.permission);
+        if (Notification.permission === "denied") {
+          toast.error("Notifications are blocked in your browser settings");
+        } else {
+          toast.error("Please allow notifications in your browser settings");
+        }
       }
     } catch (error) {
       console.error("Error enabling notifications:", error);

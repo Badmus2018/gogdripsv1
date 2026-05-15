@@ -1,13 +1,15 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import getCurrentUser from "@/actions/get-current-user";
 import { notificationEmitter } from "@/libs/notification-emitter";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const currentUser = await getCurrentUser();
 
   // Only allow admin users
   if (!currentUser || currentUser.role !== "ADMIN") {
-    return new Response("Unauthorized", { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const encoder = new TextEncoder();
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
