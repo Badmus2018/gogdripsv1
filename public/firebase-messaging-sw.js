@@ -5,9 +5,9 @@ importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compa
 // Initialize the Firebase app in the service worker
 firebase.initializeApp({
   apiKey: "AIzaSyBwz1czOBdyFU7FlF3VCq1i6zkCzYTUTB0",
-  authDomain: "gogodrips.firebaseapp.com",
+  authDomain: "windowchop.firebaseapp.com",
   projectId: "gogodrips",
-  storageBucket: "gogodrips.firebasestorage.app",
+  storageBucket: "windowchop.appspot.com",
   messagingSenderId: "229286330629",
   appId: "1:229286330629:web:5a0c5fe83fb520882af76c"
 });
