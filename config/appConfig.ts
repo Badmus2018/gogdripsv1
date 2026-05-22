@@ -1,12 +1,12 @@
 export const appConfig = {
-  aboutUsDescription: "Freshly baked, Designed with love",
+  aboutUsDescription: "Freshly baked, Curated with love",
   headerFooterBgColor: "#FFC5D3", // Default Tailwind bg-zinc-900
   headerFooterFontColor: "#fff", // Default Tailwind text-slate-200
-  appName: "Gogodrips",
-  appDescription: "Freshly baked, designed with love.",
+  appName: "WindowChop",
+  appDescription: "Freshly baked, Curated with love.",
   logoUrl: "/logo.png",
   themeColor: "#fff",
-  contactEmail: "contact@gogodrips.com",
+  contactEmail: "whatsapp: +234 703 040 6392",
   faqs: [
     {
       question: "What are the delivery times?",
@@ -15,12 +15,12 @@ export const appConfig = {
     },
     {
       question: "How much is delivery?",
-      answer: "Delivery is FREE during all scheduled delivery windows.",
+      answer: "Delivery is shown on order.",
     },
     {
       question: "Is delivery free everywhere?",
       answer:
-        "Delivery is free to all pre listed locations. The ones you see during checkout.",
+        "Delivery is free when announced.",
     },
     {
       question: "What's the Sorting & Packaging Fee (SPF)?",
