@@ -6,7 +6,7 @@ export const appConfig = {
   appDescription: "Freshly baked, Curated with love.",
   logoUrl: "/logo.png",
   themeColor: "#fff",
-  contactEmail: "whatsapp: +234 703 040 6392",
+  contactEmail: "Whatsapp: +234 703 040 6392",
   faqs: [
     {
       question: "What are the delivery times?",
